@@ -1,7 +1,7 @@
 # LocalGateway Go SDK
 
 LocalGateway 管理面的薄 Go 客户端。模块路径为
-`github.com/HuanyuMark/localgateway-go`，当前版本 **v0.2.0**。
+`github.com/HuanyuMark/localgateway-go`，当前版本 **v0.2.1**。
 
 provider 生命周期库（监听、内建端点、OpenAPI 组装、注册重试与优雅退出）位于
 独立仓库 `github.com/HuanyuMark/localgateway-go-provider`。本仓库只包含 client
@@ -23,7 +23,7 @@ localgateway-go/
 ## 安装
 
 ```powershell
-go get github.com/HuanyuMark/localgateway-go@v0.2.0
+go get github.com/HuanyuMark/localgateway-go@v0.2.1
 ```
 
 ```go
@@ -39,7 +39,7 @@ import (
 需要 provider 库时改用独立模块：
 
 ```powershell
-go get github.com/HuanyuMark/localgateway-go-provider@v0.2.0
+go get github.com/HuanyuMark/localgateway-go-provider@v0.2.1
 ```
 
 ## 通过网关模块代理引入
@@ -52,7 +52,7 @@ $env:GONOSUMDB = "github.com/HuanyuMark/*"   # 本地代理无法访问公共校
 ```
 
 ```powershell
-go get github.com/HuanyuMark/localgateway-go@v0.2.0
+go get github.com/HuanyuMark/localgateway-go@v0.2.1
 go mod tidy
 go build
 ```
