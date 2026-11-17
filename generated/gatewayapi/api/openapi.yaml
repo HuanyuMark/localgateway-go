@@ -1,0 +1,898 @@
+openapi: 3.1.0
+info:
+  description: LocalGateway 本地服务发现与反向代理的管理面。所有写操作需要 POST /gw/session 获得的 bearer token。
+  license:
+    name: MIT
+  title: LocalGateway Management API
+  version: 0.1.0
+servers:
+- url: /
+paths:
+  /gw/events:
+    get:
+      operationId: streamEvents
+      responses:
+        "200":
+          content:
+            text/event-stream:
+              schema:
+                type: string
+          description: SSE 事件流（registered/updated/unregistered/status_changed/gateway_started/gateway_restarting/gateway_ready）
+      summary: '`GET /gw/events`'
+      tags:
+      - gateway
+  /gw/health:
+    get:
+      operationId: getHealth
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+          description: 网关健康
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 内部错误
+      summary: '`GET /gw/health`'
+      tags:
+      - gateway
+  /gw/openapi.json:
+    get:
+      operationId: getOpenApiDocument
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: 网关管理 API 的 OpenAPI 文档
+      summary: '`GET /gw/openapi.json`'
+      tags:
+      - gateway
+  /gw/services:
+    get:
+      operationId: listServices
+      parameters:
+      - description: 服务名子串，大小写不敏感
+        explode: true
+        in: query
+        name: nameContains
+        required: false
+        schema:
+          type: string
+        style: form
+      - description: 页码，从 1 开始
+        explode: true
+        in: query
+        name: page
+        required: false
+        schema:
+          format: int32
+          minimum: 0
+          type: integer
+        style: form
+      - description: 每页数量，默认 20，上限 200
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          format: int32
+          minimum: 0
+          type: integer
+        style: form
+      - description: "扩展字段：apiInfo,projectRoot"
+        explode: true
+        in: query
+        name: fields
+        required: false
+        schema:
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceListResponse"
+          description: 服务列表
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 查询参数错误
+      summary: '`GET /gw/services`'
+      tags:
+      - services
+  /gw/services/{serviceName}:
+    delete:
+      operationId: unregisterService
+      parameters:
+      - description: 服务名
+        explode: false
+        in: path
+        name: serviceName
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: 已注销
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 缺少或过期的会话 token
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 非 owner
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 服务不存在
+      security:
+      - bearer_auth: []
+      summary: "`DELETE /gw/services/{serviceName}`"
+      tags:
+      - services
+    get:
+      operationId: getService
+      parameters:
+      - description: 服务名
+        explode: false
+        in: path
+        name: serviceName
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceDetail"
+          description: 服务详情
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 服务不存在
+      summary: "`GET /gw/services/{serviceName}`"
+      tags:
+      - services
+    patch:
+      operationId: patchService
+      parameters:
+      - description: 服务名
+        explode: false
+        in: path
+        name: serviceName
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationResponse"
+          description: 更新成功
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 参数非法
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 缺少或过期的会话 token
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 非 owner
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 服务不存在
+      security:
+      - bearer_auth: []
+      summary: "`PATCH /gw/services/{serviceName}`"
+      tags:
+      - services
+    put:
+      operationId: registerService
+      parameters:
+      - description: 服务名
+        explode: false
+        in: path
+        name: serviceName
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationResponse"
+          description: 更新注册
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationResponse"
+          description: 新建注册
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 探活或 apiInfo 非法
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 缺少或过期的会话 token
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 同名冲突
+      security:
+      - bearer_auth: []
+      summary: "`PUT /gw/services/{serviceName}`"
+      tags:
+      - services
+  /gw/services/{serviceName}/api-info:
+    get:
+      operationId: getServiceApiInfo
+      parameters:
+      - description: 服务名
+        explode: false
+        in: path
+        name: serviceName
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/vnd.oai.openapi+json:
+              schema: {}
+          description: OpenAPI 3.0/3.1 文档
+          headers:
+            Cache-Control:
+              description: 固定为 no-cache
+              explode: false
+              schema:
+                type: string
+              style: simple
+            ETag:
+              description: 规范化 JSON 的 SHA-256 前 16 字节
+              explode: false
+              schema:
+                type: string
+              style: simple
+        "304":
+          description: 内容未变（If-None-Match 命中）
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 服务或 apiInfo 不存在
+      summary: "`GET /gw/services/{serviceName}/api-info`"
+      tags:
+      - services
+  /gw/session:
+    post:
+      operationId: createSession
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+          description: 握手成功
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 调用方身份校验失败
+      summary: '`POST /gw/session`'
+      tags:
+      - gateway
+  /gw/shutdown:
+    post:
+      operationId: shutdownGateway
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: "#/components/schemas/ShutdownRequest"
+              nullable: true
+      responses:
+        "202":
+          description: 已接受关闭请求
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: nextPort 非法
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 缺少或过期的会话 token
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: 未注入关闭钩子
+      security:
+      - bearer_auth: []
+      summary: '`POST /gw/shutdown`'
+      tags:
+      - gateway
+components:
+  schemas:
+    ApiError:
+      description: 统一错误响应体。
+      example:
+        code: ""
+        message: message
+      properties:
+        code:
+          allOf:
+          - $ref: "#/components/schemas/ErrorCode"
+          description: 稳定错误码。
+        message:
+          description: 人读说明，不保证稳定。
+          type: string
+      required:
+      - code
+      - message
+    CallerInfo:
+      description: 调用方进程信息。
+      properties:
+        imagePath:
+          description: 进程映像完整路径。
+          type: string
+        pid:
+          description: 调用方进程 ID。
+          format: int32
+          minimum: 0
+          type: integer
+        userName:
+          description: 用户名，取不到时为空。
+          nullable: true
+          type: string
+        userSid:
+          description: 调用方 Windows 用户 SID。
+          type: string
+      required:
+      - imagePath
+      - pid
+      - userSid
+    ErrorCode:
+      description: |-
+        稳定的错误码集合。
+
+        新增错误码属于契约变更：只能由 CORE 主线发起，并走 `CONTRACT-n` 任务。
+      enum:
+      - service_not_found
+      - service_unavailable
+      - bad_gateway
+      - gateway_timeout
+      - internal_error
+      - name_conflict
+      - invalid_probe
+      - invalid_api_info
+      - invalid_request
+      - payload_too_large
+      - unauthorized
+      - forbidden
+      type: string
+    GatewayInfo:
+      description: 网关自身信息。
+      properties:
+        baseUrl:
+          description: 管理面地址，例如 `http://127.0.0.1:47821`。
+          type: string
+        pid:
+          description: 网关进程 ID。
+          format: int32
+          minimum: 0
+          type: integer
+        version:
+          description: 网关版本。
+          type: string
+      required:
+      - baseUrl
+      - pid
+      - version
+    HealthResponse:
+      description: '`GET /gw/health` 的响应。'
+      example:
+        pid: 0
+        status: status
+        version: version
+      properties:
+        pid:
+          description: 网关进程 ID。
+          format: int32
+          minimum: 0
+          type: integer
+        status:
+          description: 固定为 `ok`；网关无法服务时不会返回 200。
+          type: string
+        version:
+          description: 网关版本。
+          type: string
+      required:
+      - pid
+      - status
+      - version
+    OwnerSummary:
+      description: 服务 owner 摘要；用于冲突提示与同 owner 回收判定。
+      properties:
+        imagePath:
+          description: 进程映像完整路径。
+          type: string
+        pid:
+          description: 进程 ID（仅供展示，可能被复用）。
+          format: int32
+          minimum: 0
+          type: integer
+        userName:
+          description: 用户名，取不到时为空。
+          nullable: true
+          type: string
+        userSid:
+          description: Windows 用户 SID。
+          type: string
+      required:
+      - imagePath
+      - pid
+      - userSid
+    PatchRequest:
+      description: |-
+        `PATCH /gw/services/{serviceName}` 的请求体。
+
+        只允许更新 apiInfo / projectRoot / probe。首版不支持用 `null` 清空 apiInfo：
+        缺省与 `null` 都表示"不修改"。
+      example:
+        apiInfo: ""
+        probe: ""
+        projectRoot: projectRoot
+      properties:
+        apiInfo:
+          description: 新的 apiInfo。
+        probe:
+          allOf:
+          - $ref: "#/components/schemas/ProbeConfig"
+          description: 新的探活配置。
+          nullable: true
+        projectRoot:
+          description: 新的项目根目录。
+          nullable: true
+          type: string
+    ProbeConfig:
+      description: 单个服务的探活配置。
+      properties:
+        path:
+          description: 探活路径，必须以 `/` 开头，例如 `/health`。
+          type: string
+        timeoutMs:
+          description: 单次探活超时（毫秒）。
+          format: int32
+          minimum: 0
+          type: integer
+      required:
+      - path
+    ProbePolicy:
+      description: 网关下发给 SDK 的探活策略（会话响应中的 `policy`）。
+      properties:
+        expireAfterMs:
+          description: offline 后多久未恢复判 expired。
+          format: int64
+          minimum: 0
+          type: integer
+        offlineAfterMisses:
+          description: 连续 miss 多少次判 offline。
+          format: int32
+          minimum: 0
+          type: integer
+        probeIntervalMs:
+          description: 探测周期（毫秒）。
+          format: int32
+          minimum: 0
+          type: integer
+        probeTimeoutMs:
+          description: 单次探测超时（毫秒）。
+          format: int32
+          minimum: 0
+          type: integer
+    Protocol:
+      description: provider 协议。首版只有 HTTP（含 SSE / WebSocket）。
+      enum:
+      - http
+      type: string
+    RegisterRequest:
+      description: "`PUT /gw/services/{serviceName}` 的请求体。"
+      example:
+        apiInfo: ""
+        notifyUrl: notifyUrl
+        port: 0
+        probe: ""
+        projectRoot: projectRoot
+        protocol: ""
+        version: version
+      properties:
+        apiInfo:
+          description: provider 的 OpenAPI 文档，可后补。
+        notifyUrl:
+          description: 端口变更时的定向通知地址。
+          nullable: true
+          type: string
+        port:
+          description: provider 监听端口。
+          format: int32
+          minimum: 0
+          type: integer
+        probe:
+          allOf:
+          - $ref: "#/components/schemas/ProbeConfig"
+          description: 探活配置；`probe.path` 必填。
+          nullable: true
+        projectRoot:
+          description: provider 项目根目录。
+          nullable: true
+          type: string
+        protocol:
+          allOf:
+          - $ref: "#/components/schemas/Protocol"
+          description: 协议，缺省为 `http`。
+        version:
+          description: provider 版本。
+          type: string
+      required:
+      - port
+      - version
+    RegistrationResponse:
+      description: 注册 / PATCH 成功的响应体。
+      example:
+        lastProbe: 2026-11-13T08:00:00Z
+        name: voicecenter
+        revision: 0
+        status: ""
+      properties:
+        lastProbe:
+          description: 最近一次探测时间。
+          example: 2026-11-13T08:00:00Z
+          nullable: true
+          type: string
+        name:
+          description: 服务名。
+          example: voicecenter
+          type: string
+        revision:
+          description: 单服务 revision。
+          format: int64
+          minimum: 0
+          type: integer
+        status:
+          allOf:
+          - $ref: "#/components/schemas/ServiceStatus"
+          description: 注册后的状态；注册时立即探测一次。
+      required:
+      - name
+      - revision
+      - status
+    ServiceDetail:
+      description: 服务详情，不含 apiInfo。
+      example:
+        endpoints:
+        - endpoints
+        - endpoints
+        lastProbe: 2026-11-13T08:00:00Z
+        name: voicecenter
+        notifyUrl: notifyUrl
+        owner: ""
+        port: 0
+        probe: ""
+        projectRoot: projectRoot
+        protocol: ""
+        revision: 0
+        status: ""
+        updatedAt: 2026-11-13T08:00:00Z
+        version: version
+      properties:
+        endpoints:
+          description: apiInfo 中声明的路径，排序后返回。
+          items:
+            type: string
+          type: array
+          default: null
+        lastProbe:
+          description: 最近一次探测时间。
+          example: 2026-11-13T08:00:00Z
+          nullable: true
+          type: string
+        name:
+          description: 服务名。
+          example: voicecenter
+          type: string
+        notifyUrl:
+          description: 端口变更通知地址。
+          nullable: true
+          type: string
+        owner:
+          allOf:
+          - $ref: "#/components/schemas/OwnerSummary"
+          description: owner 摘要。
+        port:
+          description: provider 端口。
+          format: int32
+          minimum: 0
+          type: integer
+        probe:
+          allOf:
+          - $ref: "#/components/schemas/ProbeConfig"
+          description: 探活配置。
+        projectRoot:
+          description: provider 项目根目录。
+          nullable: true
+          type: string
+        protocol:
+          allOf:
+          - $ref: "#/components/schemas/Protocol"
+          description: 协议。
+        revision:
+          description: 单服务 revision。
+          format: int64
+          minimum: 0
+          type: integer
+        status:
+          allOf:
+          - $ref: "#/components/schemas/ServiceStatus"
+          description: 当前状态。
+        updatedAt:
+          description: 最近更新时间。
+          example: 2026-11-13T08:00:00Z
+          type: string
+        version:
+          description: provider 版本。
+          type: string
+      required:
+      - endpoints
+      - name
+      - owner
+      - port
+      - probe
+      - protocol
+      - revision
+      - status
+      - updatedAt
+      - version
+    ServiceListResponse:
+      description: 服务列表响应。
+      example:
+        items:
+        - apiInfo: ""
+          lastProbe: 2026-11-13T08:00:00Z
+          name: voicecenter
+          probe: probe
+          projectRoot: projectRoot
+          protocol: ""
+          revision: 0
+          status: ""
+          version: version
+        - apiInfo: ""
+          lastProbe: 2026-11-13T08:00:00Z
+          name: voicecenter
+          probe: probe
+          projectRoot: projectRoot
+          protocol: ""
+          revision: 0
+          status: ""
+          version: version
+        limit: 0
+        page: 0
+        revision: 0
+        total: 0
+      properties:
+        items:
+          description: 当前页。
+          items:
+            $ref: "#/components/schemas/ServiceSummary"
+          type: array
+          default: null
+        limit:
+          description: 每页数量。
+          format: int32
+          minimum: 0
+          type: integer
+        page:
+          description: 页码，从 1 开始。
+          format: int32
+          minimum: 0
+          type: integer
+        revision:
+          description: 全局 revision。
+          format: int64
+          minimum: 0
+          type: integer
+        total:
+          description: 过滤后的总数。
+          format: int64
+          minimum: 0
+          type: integer
+      required:
+      - items
+      - limit
+      - page
+      - revision
+      - total
+    ServiceStatus:
+      description: |-
+        探活状态。
+
+        `Expired` 表示已被移出注册表，不会出现在列表里；保留该值供事件与日志使用。
+      enum:
+      - unknown
+      - healthy
+      - degraded
+      - offline
+      - expired
+      type: string
+    ServiceSummary:
+      description: 列表项。
+      example:
+        apiInfo: ""
+        lastProbe: 2026-11-13T08:00:00Z
+        name: voicecenter
+        probe: probe
+        projectRoot: projectRoot
+        protocol: ""
+        revision: 0
+        status: ""
+        version: version
+      properties:
+        apiInfo:
+          description: 仅当 `fields=apiInfo` 时返回。
+        lastProbe:
+          description: 最近一次探测时间。
+          example: 2026-11-13T08:00:00Z
+          nullable: true
+          type: string
+        name:
+          description: 服务名。
+          example: voicecenter
+          type: string
+        probe:
+          description: 探活路径。
+          type: string
+        projectRoot:
+          description: 仅当 `fields=projectRoot` 时返回。
+          nullable: true
+          type: string
+        protocol:
+          allOf:
+          - $ref: "#/components/schemas/Protocol"
+          description: 协议。
+        revision:
+          description: 单服务 revision。
+          format: int64
+          minimum: 0
+          type: integer
+        status:
+          allOf:
+          - $ref: "#/components/schemas/ServiceStatus"
+          description: 状态。
+        version:
+          description: provider 版本。
+          type: string
+      required:
+      - name
+      - probe
+      - protocol
+      - revision
+      - status
+      - version
+    SessionResponse:
+      description: 会话响应。
+      example:
+        caller: ""
+        expiresAt: 2026-11-13T20:00:00Z
+        gateway: ""
+        policy: ""
+        token: token
+      properties:
+        caller:
+          allOf:
+          - $ref: "#/components/schemas/CallerInfo"
+          description: 调用方进程信息。
+        expiresAt:
+          description: 过期时间。
+          example: 2026-11-13T20:00:00Z
+          type: string
+        gateway:
+          allOf:
+          - $ref: "#/components/schemas/GatewayInfo"
+          description: 网关自身信息。
+        policy:
+          allOf:
+          - $ref: "#/components/schemas/ProbePolicy"
+          description: 探活策略。
+        token:
+          description: 写操作用的 bearer token。
+          type: string
+      required:
+      - caller
+      - expiresAt
+      - gateway
+      - policy
+      - token
+    ShutdownRequest:
+      description: |-
+        `POST /gw/shutdown` 的可选请求体。
+
+        省略 `nextPort` 表示普通关闭；提供时网关会先广播 `gateway_restarting`，
+        把新端口写入注册表与 SQLite 配置，然后关闭。下次启动按新端口绑定。
+      example:
+        nextPort: 0
+      properties:
+        nextPort:
+          description: 重启后使用的新端口；`None` 表示不换端口。
+          format: int32
+          minimum: 0
+          nullable: true
+          type: integer
+  securitySchemes:
+    bearer_auth:
+      bearerFormat: opaque session token
+      scheme: bearer
+      type: http
