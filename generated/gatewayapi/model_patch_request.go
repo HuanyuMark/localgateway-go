@@ -21,6 +21,8 @@ var _ MappedNullable = &PatchRequest{}
 type PatchRequest struct {
 	// 新的 apiInfo。
 	ApiInfo interface{} `json:"apiInfo,omitempty"`
+	// 新的跨域配置；缺省表示不修改。
+	Cors NullableCorsConfig `json:"cors,omitempty"`
 	// 新的探活配置。
 	Probe NullableProbeConfig `json:"probe,omitempty"`
 	// 新的项目根目录。
@@ -75,6 +77,49 @@ func (o *PatchRequest) HasApiInfo() bool {
 // SetApiInfo gets a reference to the given interface{} and assigns it to the ApiInfo field.
 func (o *PatchRequest) SetApiInfo(v interface{}) {
 	o.ApiInfo = v
+}
+
+// GetCors returns the Cors field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *PatchRequest) GetCors() CorsConfig {
+	if o == nil || IsNil(o.Cors.Get()) {
+		var ret CorsConfig
+		return ret
+	}
+	return *o.Cors.Get()
+}
+
+// GetCorsOk returns a tuple with the Cors field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *PatchRequest) GetCorsOk() (*CorsConfig, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.Cors.Get(), o.Cors.IsSet()
+}
+
+// HasCors returns a boolean if a field has been set.
+func (o *PatchRequest) HasCors() bool {
+	if o != nil && o.Cors.IsSet() {
+		return true
+	}
+
+	return false
+}
+
+// SetCors gets a reference to the given NullableCorsConfig and assigns it to the Cors field.
+func (o *PatchRequest) SetCors(v CorsConfig) {
+	o.Cors.Set(&v)
+}
+
+// SetCorsNil sets the value for Cors to be an explicit nil
+func (o *PatchRequest) SetCorsNil() {
+	o.Cors.Set(nil)
+}
+
+// UnsetCors ensures that no value is present for Cors, not even an explicit nil
+func (o *PatchRequest) UnsetCors() {
+	o.Cors.Unset()
 }
 
 // GetProbe returns the Probe field value if set, zero value otherwise (both if not set or set to explicit null).
@@ -175,6 +220,9 @@ func (o PatchRequest) ToMap() (map[string]interface{}, error) {
 	toSerialize := map[string]interface{}{}
 	if o.ApiInfo != nil {
 		toSerialize["apiInfo"] = o.ApiInfo
+	}
+	if o.Cors.IsSet() {
+		toSerialize["cors"] = o.Cors.Get()
 	}
 	if o.Probe.IsSet() {
 		toSerialize["probe"] = o.Probe.Get()

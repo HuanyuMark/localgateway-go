@@ -21,6 +21,8 @@ var _ MappedNullable = &ServiceDetail{}
 
 // ServiceDetail 服务详情，不含 apiInfo。
 type ServiceDetail struct {
+	// 跨域配置；未配置时不返回该字段。
+	Cors NullableCorsConfig `json:"cors,omitempty"`
 	// apiInfo 中声明的路径，排序后返回。
 	Endpoints []string `json:"endpoints"`
 	// 最近一次探测时间。
@@ -76,6 +78,49 @@ func NewServiceDetail(endpoints []string, name string, owner OwnerSummary, port 
 func NewServiceDetailWithDefaults() *ServiceDetail {
 	this := ServiceDetail{}
 	return &this
+}
+
+// GetCors returns the Cors field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *ServiceDetail) GetCors() CorsConfig {
+	if o == nil || IsNil(o.Cors.Get()) {
+		var ret CorsConfig
+		return ret
+	}
+	return *o.Cors.Get()
+}
+
+// GetCorsOk returns a tuple with the Cors field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *ServiceDetail) GetCorsOk() (*CorsConfig, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.Cors.Get(), o.Cors.IsSet()
+}
+
+// HasCors returns a boolean if a field has been set.
+func (o *ServiceDetail) HasCors() bool {
+	if o != nil && o.Cors.IsSet() {
+		return true
+	}
+
+	return false
+}
+
+// SetCors gets a reference to the given NullableCorsConfig and assigns it to the Cors field.
+func (o *ServiceDetail) SetCors(v CorsConfig) {
+	o.Cors.Set(&v)
+}
+
+// SetCorsNil sets the value for Cors to be an explicit nil
+func (o *ServiceDetail) SetCorsNil() {
+	o.Cors.Set(nil)
+}
+
+// UnsetCors ensures that no value is present for Cors, not even an explicit nil
+func (o *ServiceDetail) UnsetCors() {
+	o.Cors.Unset()
 }
 
 // GetEndpoints returns the Endpoints field value
@@ -457,6 +502,9 @@ func (o ServiceDetail) MarshalJSON() ([]byte, error) {
 
 func (o ServiceDetail) ToMap() (map[string]interface{}, error) {
 	toSerialize := map[string]interface{}{}
+	if o.Cors.IsSet() {
+		toSerialize["cors"] = o.Cors.Get()
+	}
 	toSerialize["endpoints"] = o.Endpoints
 	if o.LastProbe.IsSet() {
 		toSerialize["lastProbe"] = o.LastProbe.Get()

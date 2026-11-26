@@ -5,6 +5,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **ApiInfo** | Pointer to **interface{}** | provider 的 OpenAPI 文档，可后补。 | [optional]
+**Cors** | Pointer to [**NullableCorsConfig**](CorsConfig.md) | 跨域配置；缺省表示不改写 CORS。 | [optional]
 **NotifyUrl** | Pointer to **NullableString** | 端口变更时的定向通知地址。 | [optional]
 **Port** | **int32** | provider 监听端口。 |
 **Probe** | Pointer to [**NullableProbeConfig**](ProbeConfig.md) | 探活配置；&#x60;probe.path&#x60; 必填。 | [optional]
@@ -66,6 +67,41 @@ HasApiInfo returns a boolean if a field has been set.
 `func (o *RegisterRequest) UnsetApiInfo()`
 
 UnsetApiInfo ensures that no value is present for ApiInfo, not even an explicit nil
+### GetCors
+
+`func (o *RegisterRequest) GetCors() CorsConfig`
+
+GetCors returns the Cors field if non-nil, zero value otherwise.
+
+### GetCorsOk
+
+`func (o *RegisterRequest) GetCorsOk() (*CorsConfig, bool)`
+
+GetCorsOk returns a tuple with the Cors field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetCors
+
+`func (o *RegisterRequest) SetCors(v CorsConfig)`
+
+SetCors sets Cors field to given value.
+
+### HasCors
+
+`func (o *RegisterRequest) HasCors() bool`
+
+HasCors returns a boolean if a field has been set.
+
+### SetCorsNil
+
+`func (o *RegisterRequest) SetCorsNil(b bool)`
+
+ SetCorsNil sets the value for Cors to be an explicit nil
+
+### UnsetCors
+`func (o *RegisterRequest) UnsetCors()`
+
+UnsetCors ensures that no value is present for Cors, not even an explicit nil
 ### GetNotifyUrl
 
 `func (o *RegisterRequest) GetNotifyUrl() string`

@@ -5,6 +5,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **ApiInfo** | Pointer to **interface{}** | 新的 apiInfo。 | [optional]
+**Cors** | Pointer to [**NullableCorsConfig**](CorsConfig.md) | 新的跨域配置；缺省表示不修改。 | [optional]
 **Probe** | Pointer to [**NullableProbeConfig**](ProbeConfig.md) | 新的探活配置。 | [optional]
 **ProjectRoot** | Pointer to **NullableString** | 新的项目根目录。 | [optional]
 
@@ -62,6 +63,41 @@ HasApiInfo returns a boolean if a field has been set.
 `func (o *PatchRequest) UnsetApiInfo()`
 
 UnsetApiInfo ensures that no value is present for ApiInfo, not even an explicit nil
+### GetCors
+
+`func (o *PatchRequest) GetCors() CorsConfig`
+
+GetCors returns the Cors field if non-nil, zero value otherwise.
+
+### GetCorsOk
+
+`func (o *PatchRequest) GetCorsOk() (*CorsConfig, bool)`
+
+GetCorsOk returns a tuple with the Cors field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetCors
+
+`func (o *PatchRequest) SetCors(v CorsConfig)`
+
+SetCors sets Cors field to given value.
+
+### HasCors
+
+`func (o *PatchRequest) HasCors() bool`
+
+HasCors returns a boolean if a field has been set.
+
+### SetCorsNil
+
+`func (o *PatchRequest) SetCorsNil(b bool)`
+
+ SetCorsNil sets the value for Cors to be an explicit nil
+
+### UnsetCors
+`func (o *PatchRequest) UnsetCors()`
+
+UnsetCors ensures that no value is present for Cors, not even an explicit nil
 ### GetProbe
 
 `func (o *PatchRequest) GetProbe() ProbeConfig`

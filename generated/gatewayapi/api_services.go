@@ -22,6 +22,20 @@ import (
 type ServicesAPI interface {
 
 	/*
+		DeleteServiceCors `DELETE /gw/services/{serviceName}/cors`
+
+		清空跨域配置，恢复为完全透传 provider 的 CORS 头。幂等：未配置时同样返回 204。
+
+		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+		@param serviceName 服务名
+		@return ApiDeleteServiceCorsRequest
+	*/
+	DeleteServiceCors(ctx context.Context, serviceName string) ApiDeleteServiceCorsRequest
+
+	// DeleteServiceCorsExecute executes the request
+	DeleteServiceCorsExecute(r ApiDeleteServiceCorsRequest) (*http.Response, error)
+
+	/*
 		GetService `GET /gw/services/{serviceName}`
 
 		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
@@ -73,6 +87,22 @@ type ServicesAPI interface {
 	PatchServiceExecute(r ApiPatchServiceRequest) (*RegistrationResponse, *http.Response, error)
 
 	/*
+			PutServiceCors `PUT /gw/services/{serviceName}/cors`
+
+			用整份配置替换该服务的跨域设置。`{"allowAll": true}` 即可一键放行所有域；
+		配置在代理面立即生效，预检由网关直接应答。
+
+			@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+			@param serviceName 服务名
+			@return ApiPutServiceCorsRequest
+	*/
+	PutServiceCors(ctx context.Context, serviceName string) ApiPutServiceCorsRequest
+
+	// PutServiceCorsExecute executes the request
+	//  @return CorsResponse
+	PutServiceCorsExecute(r ApiPutServiceCorsRequest) (*CorsResponse, *http.Response, error)
+
+	/*
 		RegisterService `PUT /gw/services/{serviceName}`
 
 		@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
@@ -100,6 +130,130 @@ type ServicesAPI interface {
 
 // ServicesAPIService ServicesAPI service
 type ServicesAPIService service
+
+type ApiDeleteServiceCorsRequest struct {
+	ctx         context.Context
+	ApiService  ServicesAPI
+	serviceName string
+}
+
+func (r ApiDeleteServiceCorsRequest) Execute() (*http.Response, error) {
+	return r.ApiService.DeleteServiceCorsExecute(r)
+}
+
+/*
+DeleteServiceCors `DELETE /gw/services/{serviceName}/cors`
+
+清空跨域配置，恢复为完全透传 provider 的 CORS 头。幂等：未配置时同样返回 204。
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param serviceName 服务名
+	@return ApiDeleteServiceCorsRequest
+*/
+func (a *ServicesAPIService) DeleteServiceCors(ctx context.Context, serviceName string) ApiDeleteServiceCorsRequest {
+	return ApiDeleteServiceCorsRequest{
+		ApiService:  a,
+		ctx:         ctx,
+		serviceName: serviceName,
+	}
+}
+
+// Execute executes the request
+func (a *ServicesAPIService) DeleteServiceCorsExecute(r ApiDeleteServiceCorsRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod = http.MethodDelete
+		localVarPostBody   interface{}
+		formFiles          []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ServicesAPIService.DeleteServiceCors")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/gw/services/{serviceName}/cors"
+	localVarPath = strings.Replace(localVarPath, "{"+"serviceName"+"}", url.PathEscape(parameterValueToString(r.serviceName, "serviceName")), -1)
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{"application/json"}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		if localVarHTTPResponse.StatusCode == 401 {
+			var v ApiError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarHTTPResponse, newErr
+			}
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
+			return localVarHTTPResponse, newErr
+		}
+		if localVarHTTPResponse.StatusCode == 403 {
+			var v ApiError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarHTTPResponse, newErr
+			}
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
+			return localVarHTTPResponse, newErr
+		}
+		if localVarHTTPResponse.StatusCode == 404 {
+			var v ApiError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarHTTPResponse, newErr
+			}
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
 
 type ApiGetServiceRequest struct {
 	ctx         context.Context
@@ -549,6 +703,165 @@ func (a *ServicesAPIService) PatchServiceExecute(r ApiPatchServiceRequest) (*Reg
 	}
 	// body params
 	localVarPostBody = r.patchRequest
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return localVarReturnValue, nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarReturnValue, localVarHTTPResponse, err
+	}
+
+	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarReturnValue, localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		if localVarHTTPResponse.StatusCode == 400 {
+			var v ApiError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
+			return localVarReturnValue, localVarHTTPResponse, newErr
+		}
+		if localVarHTTPResponse.StatusCode == 401 {
+			var v ApiError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
+			return localVarReturnValue, localVarHTTPResponse, newErr
+		}
+		if localVarHTTPResponse.StatusCode == 403 {
+			var v ApiError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
+			return localVarReturnValue, localVarHTTPResponse, newErr
+		}
+		if localVarHTTPResponse.StatusCode == 404 {
+			var v ApiError
+			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHTTPResponse, newErr
+			}
+			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+			newErr.model = v
+		}
+		return localVarReturnValue, localVarHTTPResponse, newErr
+	}
+
+	err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
+	if err != nil {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: err.Error(),
+		}
+		return localVarReturnValue, localVarHTTPResponse, newErr
+	}
+
+	return localVarReturnValue, localVarHTTPResponse, nil
+}
+
+type ApiPutServiceCorsRequest struct {
+	ctx         context.Context
+	ApiService  ServicesAPI
+	serviceName string
+	corsConfig  *CorsConfig
+}
+
+func (r ApiPutServiceCorsRequest) CorsConfig(corsConfig CorsConfig) ApiPutServiceCorsRequest {
+	r.corsConfig = &corsConfig
+	return r
+}
+
+func (r ApiPutServiceCorsRequest) Execute() (*CorsResponse, *http.Response, error) {
+	return r.ApiService.PutServiceCorsExecute(r)
+}
+
+/*
+PutServiceCors `PUT /gw/services/{serviceName}/cors`
+
+用整份配置替换该服务的跨域设置。`{"allowAll": true}` 即可一键放行所有域；
+配置在代理面立即生效，预检由网关直接应答。
+
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param serviceName 服务名
+	@return ApiPutServiceCorsRequest
+*/
+func (a *ServicesAPIService) PutServiceCors(ctx context.Context, serviceName string) ApiPutServiceCorsRequest {
+	return ApiPutServiceCorsRequest{
+		ApiService:  a,
+		ctx:         ctx,
+		serviceName: serviceName,
+	}
+}
+
+// Execute executes the request
+//
+//	@return CorsResponse
+func (a *ServicesAPIService) PutServiceCorsExecute(r ApiPutServiceCorsRequest) (*CorsResponse, *http.Response, error) {
+	var (
+		localVarHTTPMethod  = http.MethodPut
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *CorsResponse
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ServicesAPIService.PutServiceCors")
+	if err != nil {
+		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/gw/services/{serviceName}/cors"
+	localVarPath = strings.Replace(localVarPath, "{"+"serviceName"+"}", url.PathEscape(parameterValueToString(r.serviceName, "serviceName")), -1)
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+	if r.corsConfig == nil {
+		return localVarReturnValue, nil, reportError("corsConfig is required and must be specified")
+	}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{"application/json"}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{"application/json"}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	// body params
+	localVarPostBody = r.corsConfig
 	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
 	if err != nil {
 		return localVarReturnValue, nil, err

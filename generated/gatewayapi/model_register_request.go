@@ -23,6 +23,8 @@ var _ MappedNullable = &RegisterRequest{}
 type RegisterRequest struct {
 	// provider 的 OpenAPI 文档，可后补。
 	ApiInfo interface{} `json:"apiInfo,omitempty"`
+	// 跨域配置；缺省表示不改写 CORS。
+	Cors NullableCorsConfig `json:"cors,omitempty"`
 	// 端口变更时的定向通知地址。
 	NotifyUrl NullableString `json:"notifyUrl,omitempty"`
 	// provider 监听端口。
@@ -89,6 +91,49 @@ func (o *RegisterRequest) HasApiInfo() bool {
 // SetApiInfo gets a reference to the given interface{} and assigns it to the ApiInfo field.
 func (o *RegisterRequest) SetApiInfo(v interface{}) {
 	o.ApiInfo = v
+}
+
+// GetCors returns the Cors field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *RegisterRequest) GetCors() CorsConfig {
+	if o == nil || IsNil(o.Cors.Get()) {
+		var ret CorsConfig
+		return ret
+	}
+	return *o.Cors.Get()
+}
+
+// GetCorsOk returns a tuple with the Cors field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *RegisterRequest) GetCorsOk() (*CorsConfig, bool) {
+	if o == nil {
+		return nil, false
+	}
+	return o.Cors.Get(), o.Cors.IsSet()
+}
+
+// HasCors returns a boolean if a field has been set.
+func (o *RegisterRequest) HasCors() bool {
+	if o != nil && o.Cors.IsSet() {
+		return true
+	}
+
+	return false
+}
+
+// SetCors gets a reference to the given NullableCorsConfig and assigns it to the Cors field.
+func (o *RegisterRequest) SetCors(v CorsConfig) {
+	o.Cors.Set(&v)
+}
+
+// SetCorsNil sets the value for Cors to be an explicit nil
+func (o *RegisterRequest) SetCorsNil() {
+	o.Cors.Set(nil)
+}
+
+// UnsetCors ensures that no value is present for Cors, not even an explicit nil
+func (o *RegisterRequest) UnsetCors() {
+	o.Cors.Unset()
 }
 
 // GetNotifyUrl returns the NotifyUrl field value if set, zero value otherwise (both if not set or set to explicit null).
@@ -312,6 +357,9 @@ func (o RegisterRequest) ToMap() (map[string]interface{}, error) {
 	toSerialize := map[string]interface{}{}
 	if o.ApiInfo != nil {
 		toSerialize["apiInfo"] = o.ApiInfo
+	}
+	if o.Cors.IsSet() {
+		toSerialize["cors"] = o.Cors.Get()
 	}
 	if o.NotifyUrl.IsSet() {
 		toSerialize["notifyUrl"] = o.NotifyUrl.Get()

@@ -76,10 +76,12 @@ Class | Method | HTTP request | Description
 *GatewayAPI* | [**GetOpenApiDocument**](docs/GatewayAPI.md#getopenapidocument) | **Get** /gw/openapi.json | &#x60;GET /gw/openapi.json&#x60;
 *GatewayAPI* | [**ShutdownGateway**](docs/GatewayAPI.md#shutdowngateway) | **Post** /gw/shutdown | &#x60;POST /gw/shutdown&#x60;
 *GatewayAPI* | [**StreamEvents**](docs/GatewayAPI.md#streamevents) | **Get** /gw/events | &#x60;GET /gw/events&#x60;
+*ServicesAPI* | [**DeleteServiceCors**](docs/ServicesAPI.md#deleteservicecors) | **Delete** /gw/services/{serviceName}/cors | &#x60;DELETE /gw/services/{serviceName}/cors&#x60;
 *ServicesAPI* | [**GetService**](docs/ServicesAPI.md#getservice) | **Get** /gw/services/{serviceName} | &#x60;GET /gw/services/{serviceName}&#x60;
 *ServicesAPI* | [**GetServiceApiInfo**](docs/ServicesAPI.md#getserviceapiinfo) | **Get** /gw/services/{serviceName}/api-info | &#x60;GET /gw/services/{serviceName}/api-info&#x60;
 *ServicesAPI* | [**ListServices**](docs/ServicesAPI.md#listservices) | **Get** /gw/services | &#x60;GET /gw/services&#x60;
 *ServicesAPI* | [**PatchService**](docs/ServicesAPI.md#patchservice) | **Patch** /gw/services/{serviceName} | &#x60;PATCH /gw/services/{serviceName}&#x60;
+*ServicesAPI* | [**PutServiceCors**](docs/ServicesAPI.md#putservicecors) | **Put** /gw/services/{serviceName}/cors | &#x60;PUT /gw/services/{serviceName}/cors&#x60;
 *ServicesAPI* | [**RegisterService**](docs/ServicesAPI.md#registerservice) | **Put** /gw/services/{serviceName} | &#x60;PUT /gw/services/{serviceName}&#x60;
 *ServicesAPI* | [**UnregisterService**](docs/ServicesAPI.md#unregisterservice) | **Delete** /gw/services/{serviceName} | &#x60;DELETE /gw/services/{serviceName}&#x60;
 
@@ -88,6 +90,8 @@ Class | Method | HTTP request | Description
 
  - [ApiError](docs/ApiError.md)
  - [CallerInfo](docs/CallerInfo.md)
+ - [CorsConfig](docs/CorsConfig.md)
+ - [CorsResponse](docs/CorsResponse.md)
  - [ErrorCode](docs/ErrorCode.md)
  - [GatewayInfo](docs/GatewayInfo.md)
  - [HealthResponse](docs/HealthResponse.md)

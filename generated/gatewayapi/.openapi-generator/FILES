@@ -9,6 +9,8 @@ client.go
 configuration.go
 docs/ApiError.md
 docs/CallerInfo.md
+docs/CorsConfig.md
+docs/CorsResponse.md
 docs/ErrorCode.md
 docs/GatewayAPI.md
 docs/GatewayInfo.md
@@ -30,6 +32,8 @@ docs/ShutdownRequest.md
 git_push.sh
 model_api_error.go
 model_caller_info.go
+model_cors_config.go
+model_cors_response.go
 model_error_code.go
 model_gateway_info.go
 model_health_response.go

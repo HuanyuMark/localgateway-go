@@ -755,3 +755,130 @@ func TestConnectionFailureWithoutPortReaderReturnsError(t *testing.T) {
 		t.Fatalf("RefreshBaseURL() error = %v, want ErrNoPortReader", err)
 	}
 }
+
+func TestCORSIsSentOnRegisterAndManagedWithDedicatedEndpoints(t *testing.T) {
+	var (
+		mu             sync.Mutex
+		registerBody   map[string]any
+		corsBodies     []map[string]any
+		corsMethods    []string
+		corsAuthHeader string
+	)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/gw/session":
+			writeJSON(t, w, http.StatusOK, sessionJSON("tok-1"))
+		case r.Method == http.MethodPut && r.URL.Path == "/gw/services/demo":
+			raw, _ := io.ReadAll(r.Body)
+			mu.Lock()
+			_ = json.Unmarshal(raw, &registerBody)
+			mu.Unlock()
+			writeJSON(t, w, http.StatusCreated, registrationJSON("demo"))
+		case r.URL.Path == "/gw/services/demo/cors":
+			raw, _ := io.ReadAll(r.Body)
+			var body map[string]any
+			if len(raw) > 0 {
+				_ = json.Unmarshal(raw, &body)
+			}
+			mu.Lock()
+			corsMethods = append(corsMethods, r.Method)
+			corsBodies = append(corsBodies, body)
+			corsAuthHeader = r.Header.Get("Authorization")
+			mu.Unlock()
+			if r.Method == http.MethodDelete {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			writeJSON(t, w, http.StatusOK, map[string]any{
+				"name":     "demo",
+				"revision": 5,
+				"cors":     body,
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, Options{BaseURL: server.URL})
+	_, err := client.Register(context.Background(), "demo", RegisterOptions{
+		Port:    18080,
+		Version: "1.2.3",
+		Probe:   Probe{Path: "/health"},
+		CORS:    &Cors{AllowAll: true},
+	})
+	if err != nil {
+		t.Fatalf("Register() error = %v", err)
+	}
+
+	response, err := client.SetCORS(context.Background(), "demo", Cors{
+		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowMethods:     []string{"GET", "POST"},
+		AllowCredentials: true,
+		MaxAgeSeconds:    PtrInt64(600),
+	})
+	if err != nil {
+		t.Fatalf("SetCORS() error = %v", err)
+	}
+	if got := response.Cors.Get().AllowOrigins; len(got) != 1 || got[0] != "http://localhost:5173" {
+		t.Errorf("response allowOrigins = %v", got)
+	}
+
+	if err := client.ClearCORS(context.Background(), "demo"); err != nil {
+		t.Fatalf("ClearCORS() error = %v", err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	registered, ok := registerBody["cors"].(map[string]any)
+	if !ok || registered["allowAll"] != true {
+		t.Errorf("register cors = %v", registerBody["cors"])
+	}
+	if len(corsMethods) != 2 || corsMethods[0] != http.MethodPut || corsMethods[1] != http.MethodDelete {
+		t.Errorf("cors methods = %v", corsMethods)
+	}
+	if corsAuthHeader != "Bearer tok-1" {
+		t.Errorf("Authorization = %q", corsAuthHeader)
+	}
+	put := corsBodies[0]
+	if put["allowCredentials"] != true || put["maxAgeSeconds"] != float64(600) {
+		t.Errorf("put cors body = %v", put)
+	}
+	if origins, ok := put["allowOrigins"].([]any); !ok || len(origins) != 1 {
+		t.Errorf("put allowOrigins = %v", put["allowOrigins"])
+	}
+}
+
+func TestInvalidCORSDoesNotSendRequests(t *testing.T) {
+	var (
+		mu       sync.Mutex
+		requests int
+	)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requests++
+		mu.Unlock()
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, Options{BaseURL: server.URL})
+	if _, err := client.Register(context.Background(), "demo", RegisterOptions{
+		Port: 18080, Version: "1.0.0", Probe: Probe{Path: "/health"}, CORS: &Cors{},
+	}); !errors.Is(err, ErrInvalidCORS) {
+		t.Fatalf("Register() error = %v, want ErrInvalidCORS", err)
+	}
+	if _, err := client.SetCORS(context.Background(), "demo", Cors{MaxAgeSeconds: PtrInt64(604_801)}); !errors.Is(err, ErrInvalidCORS) {
+		t.Fatalf("SetCORS() error = %v, want ErrInvalidCORS", err)
+	}
+	if _, err := client.Patch(context.Background(), "demo", PatchOptions{CORS: &Cors{}}); !errors.Is(err, ErrInvalidCORS) {
+		t.Fatalf("Patch() error = %v, want ErrInvalidCORS", err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if requests != 0 {
+		t.Errorf("requests = %d, want 0", requests)
+	}
+}

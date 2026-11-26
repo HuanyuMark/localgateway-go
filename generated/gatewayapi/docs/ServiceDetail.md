@@ -4,6 +4,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**Cors** | Pointer to [**NullableCorsConfig**](CorsConfig.md) | 跨域配置；未配置时不返回该字段。 | [optional]
 **Endpoints** | **[]string** | apiInfo 中声明的路径，排序后返回。 |
 **LastProbe** | Pointer to **NullableString** | 最近一次探测时间。 | [optional]
 **Name** | **string** | 服务名。 |
@@ -37,6 +38,41 @@ NewServiceDetailWithDefaults instantiates a new ServiceDetail object
 This constructor will only assign default values to properties that have it defined,
 but it doesn't guarantee that properties required by API are set
 
+### GetCors
+
+`func (o *ServiceDetail) GetCors() CorsConfig`
+
+GetCors returns the Cors field if non-nil, zero value otherwise.
+
+### GetCorsOk
+
+`func (o *ServiceDetail) GetCorsOk() (*CorsConfig, bool)`
+
+GetCorsOk returns a tuple with the Cors field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetCors
+
+`func (o *ServiceDetail) SetCors(v CorsConfig)`
+
+SetCors sets Cors field to given value.
+
+### HasCors
+
+`func (o *ServiceDetail) HasCors() bool`
+
+HasCors returns a boolean if a field has been set.
+
+### SetCorsNil
+
+`func (o *ServiceDetail) SetCorsNil(b bool)`
+
+ SetCorsNil sets the value for Cors to be an explicit nil
+
+### UnsetCors
+`func (o *ServiceDetail) UnsetCors()`
+
+UnsetCors ensures that no value is present for Cors, not even an explicit nil
 ### GetEndpoints
 
 `func (o *ServiceDetail) GetEndpoints() []string`

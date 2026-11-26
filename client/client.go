@@ -34,7 +34,9 @@ var (
 	// ErrInvalidProbe 表示 probe.path 缺失或不以 "/" 开头。
 	ErrInvalidProbe = errors.New("localgateway: probe.path must start with '/'")
 	// ErrEmptyPatch 表示 PATCH 没有携带任何可更新字段。
-	ErrEmptyPatch = errors.New("localgateway: patch must change at least one of APIInfo, ProjectRoot, Probe")
+	ErrEmptyPatch = errors.New("localgateway: patch must change at least one of APIInfo, ProjectRoot, Probe, CORS")
+	// ErrInvalidCORS 表示跨域配置缺少来源或预检缓存超出上限。
+	ErrInvalidCORS = errors.New("localgateway: CORS requires AllowOrigins unless AllowAll is true, and MaxAgeSeconds must be at most 604800")
 	// ErrInvalidBaseURL 表示管理面基地址不是合法的 http(s) URL。
 	ErrInvalidBaseURL = errors.New("localgateway: base URL must be an absolute http or https URL")
 	// ErrNoPortReader 表示没有配置 PortReader，无法重新发现网关端口。
@@ -49,6 +51,58 @@ func PtrInt32(v int32) *int32 { return &v }
 
 // PtrString 返回指向 v 的指针，便于构造 PatchOptions.ProjectRoot。
 func PtrString(v string) *string { return &v }
+
+// PtrInt64 返回指向 v 的指针，便于构造 Cors.MaxAgeSeconds。
+func PtrInt64(v int64) *int64 { return &v }
+
+// maxCorsMaxAgeSeconds 与网关的预检缓存上限一致（7 天）。
+const maxCorsMaxAgeSeconds = 604_800
+
+// Cors 是服务级跨域配置。
+//
+// AllowAll 为 true 时一键放行所有来源、方法与请求头；否则至少需要一个
+// AllowOrigins。配置后由网关直接应答预检并统一改写 Access-Control-* 响应头，
+// provider 不需要自行实现 CORS。
+type Cors struct {
+	AllowAll bool
+	// AllowOrigins 例如 []string{"http://localhost:5173"}；AllowAll 时忽略。
+	AllowOrigins []string
+	// AllowMethods 为空时回显预检请求声明的方法。
+	AllowMethods []string
+	// AllowHeaders 为空时回显预检请求声明的请求头。
+	AllowHeaders []string
+	// ExposeHeaders 是暴露给浏览器的响应头。
+	ExposeHeaders []string
+	// AllowCredentials 允许携带 Cookie / Authorization。
+	AllowCredentials bool
+	// MaxAgeSeconds 是预检缓存秒数；nil 时不发送 Access-Control-Max-Age。
+	MaxAgeSeconds *int64
+}
+
+func (c Cors) validate() error {
+	if !c.AllowAll && len(c.AllowOrigins) == 0 {
+		return ErrInvalidCORS
+	}
+	if c.MaxAgeSeconds != nil && (*c.MaxAgeSeconds < 0 || *c.MaxAgeSeconds > maxCorsMaxAgeSeconds) {
+		return ErrInvalidCORS
+	}
+	return nil
+}
+
+func (c Cors) toModel() gatewayapi.CorsConfig {
+	model := gatewayapi.CorsConfig{
+		AllowAll:         &c.AllowAll,
+		AllowOrigins:     append([]string(nil), c.AllowOrigins...),
+		AllowMethods:     append([]string(nil), c.AllowMethods...),
+		AllowHeaders:     append([]string(nil), c.AllowHeaders...),
+		ExposeHeaders:    append([]string(nil), c.ExposeHeaders...),
+		AllowCredentials: &c.AllowCredentials,
+	}
+	if c.MaxAgeSeconds != nil {
+		model.MaxAgeSeconds.Set(c.MaxAgeSeconds)
+	}
+	return model
+}
 
 // Options 控制客户端的网关地址与底层依赖。
 type Options struct {
@@ -83,6 +137,8 @@ type RegisterOptions struct {
 	ProjectRoot string
 	// NotifyURL 为空时不发送。
 	NotifyURL string
+	// CORS 为 nil 时不发送；设置后由网关接管该服务的跨域响应头。
+	CORS *Cors
 }
 
 // PatchOptions 是 PATCH /gw/services/{name} 的请求体。
@@ -93,6 +149,8 @@ type PatchOptions struct {
 	ProjectRoot *string
 	// Probe 为 nil 时不修改。
 	Probe *Probe
+	// CORS 为 nil 时不修改；非 nil 时替换整个跨域配置。
+	CORS *Cors
 }
 
 // Client 是并发安全的管理面客户端。token 在首次写操作时懒握手获取。
@@ -261,6 +319,13 @@ func (c *Client) Register(ctx context.Context, name string, opts RegisterOptions
 	if opts.NotifyURL != "" {
 		request.NotifyUrl = *gatewayapi.NewNullableString(&opts.NotifyURL)
 	}
+	if opts.CORS != nil {
+		if err := opts.CORS.validate(); err != nil {
+			return nil, err
+		}
+		model := opts.CORS.toModel()
+		request.Cors = *gatewayapi.NewNullableCorsConfig(&model)
+	}
 
 	response, _, err := callWithToken(c, ctx, func(api *gatewayapi.APIClient, callCtx context.Context) (*gatewayapi.RegistrationResponse, *http.Response, error) {
 		return api.ServicesAPI.RegisterService(callCtx, name).RegisterRequest(request).Execute()
@@ -292,6 +357,14 @@ func (c *Client) Patch(ctx context.Context, name string, opts PatchOptions) (*ga
 		request.Probe = *gatewayapi.NewNullableProbeConfig(probe)
 		changed = true
 	}
+	if opts.CORS != nil {
+		if err := opts.CORS.validate(); err != nil {
+			return nil, err
+		}
+		model := opts.CORS.toModel()
+		request.Cors = *gatewayapi.NewNullableCorsConfig(&model)
+		changed = true
+	}
 	if !changed {
 		return nil, ErrEmptyPatch
 	}
@@ -300,6 +373,36 @@ func (c *Client) Patch(ctx context.Context, name string, opts PatchOptions) (*ga
 		return api.ServicesAPI.PatchService(callCtx, name).PatchRequest(request).Execute()
 	})
 	return response, err
+}
+
+// SetCORS 设置服务的跨域配置（PUT /gw/services/{name}/cors）。
+//
+// cors.AllowAll 为 true 时一键放行所有域。
+func (c *Client) SetCORS(ctx context.Context, name string, cors Cors) (*gatewayapi.CorsResponse, error) {
+	if err := validateName(name); err != nil {
+		return nil, err
+	}
+	if err := cors.validate(); err != nil {
+		return nil, err
+	}
+	model := cors.toModel()
+	response, _, err := callWithToken(c, ctx, func(api *gatewayapi.APIClient, callCtx context.Context) (*gatewayapi.CorsResponse, *http.Response, error) {
+		return api.ServicesAPI.PutServiceCors(callCtx, name).CorsConfig(model).Execute()
+	})
+	return response, err
+}
+
+// ClearCORS 清空服务的跨域配置（DELETE /gw/services/{name}/cors），
+// 之后网关恢复透传 provider 的 CORS 响应头。
+func (c *Client) ClearCORS(ctx context.Context, name string) error {
+	if err := validateName(name); err != nil {
+		return err
+	}
+	_, _, err := callWithToken(c, ctx, func(api *gatewayapi.APIClient, callCtx context.Context) (struct{}, *http.Response, error) {
+		response, err := api.ServicesAPI.DeleteServiceCors(callCtx, name).Execute()
+		return struct{}{}, response, err
+	})
+	return err
 }
 
 // Delete 注销服务。

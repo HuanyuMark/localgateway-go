@@ -1,7 +1,7 @@
 # LocalGateway Go SDK
 
 LocalGateway 管理面的薄 Go 客户端。模块路径为
-`github.com/HuanyuMark/localgateway-go`，当前版本 **v0.2.2**。
+`github.com/HuanyuMark/localgateway-go`，当前版本 **v0.3.0**。
 
 provider 生命周期库（监听、内建端点、OpenAPI 组装、注册重试与优雅退出）位于
 独立仓库 `github.com/HuanyuMark/localgateway-go-provider`。本仓库只包含 client
@@ -23,7 +23,7 @@ localgateway-go/
 ## 安装
 
 ```powershell
-go get github.com/HuanyuMark/localgateway-go@v0.2.2
+go get github.com/HuanyuMark/localgateway-go@v0.3.0
 ```
 
 ```go
@@ -39,7 +39,7 @@ import (
 需要 provider 库时改用独立模块：
 
 ```powershell
-go get github.com/HuanyuMark/localgateway-go-provider@v0.2.2
+go get github.com/HuanyuMark/localgateway-go-provider@v0.3.0
 ```
 
 ## 通过网关模块代理引入
@@ -52,7 +52,7 @@ $env:GONOSUMDB = "github.com/HuanyuMark/*"   # 本地代理无法访问公共校
 ```
 
 ```powershell
-go get github.com/HuanyuMark/localgateway-go@v0.2.2
+go get github.com/HuanyuMark/localgateway-go@v0.3.0
 go mod tidy
 go build
 ```
@@ -140,7 +140,7 @@ registration, err := client.Register(ctx, "my-service", localgateway.RegisterOpt
 
 - `Register` 对应 `PUT /gw/services/{name}`；`Port`、`Version`、`Probe.Path` 必填，
   缺失时在发请求前返回 `ErrInvalidPort` / `ErrInvalidVersion` / `ErrInvalidProbe`。
-- 可选字段：`APIInfo`、`ProjectRoot`、`NotifyURL`；空值不会写入请求体。
+- 可选字段：`APIInfo`、`ProjectRoot`、`NotifyURL`、`CORS`；空值不会写入请求体。
 - 首次写操作会懒执行 `POST /gw/session` 并缓存 token。
 - 任意写请求收到 `401` 时会静默重新握手并**只重试一次**。
 - 注册 / PATCH / DELETE 遇到连接失败（网关重启或换端口）时，会重新读取
@@ -149,6 +149,33 @@ registration, err := client.Register(ctx, "my-service", localgateway.RegisterOpt
   `PortReader`（未配置时返回 `ErrNoPortReader`）。
 - `Patch` 只发送设置过的字段；`Delete(ctx, name)` 注销。
 - 测试注入点：`Options.PortReader func() (uint16, error)` 与 `Options.HTTPClient`。
+
+### 跨域（CORS）
+
+配置挂在服务上，由网关直接应答预检并统一改写 `Access-Control-*` 响应头，
+provider 不需要自己实现 CORS：
+
+```go
+// 注册时一键放行所有域
+_, err := client.Register(ctx, "my-service", localgateway.RegisterOptions{
+    Port:    8080,
+    Version: "1.0.0",
+    Probe:   localgateway.Probe{Path: "/health"},
+    CORS:    &localgateway.Cors{AllowAll: true},
+})
+
+// 注册后单独设置 / 清空
+_, err = client.SetCORS(ctx, "my-service", localgateway.Cors{
+    AllowOrigins:     []string{"http://localhost:5173"},
+    AllowMethods:     []string{"GET", "POST"},
+    AllowCredentials: true,
+    MaxAgeSeconds:    localgateway.PtrInt64(600),
+})
+err = client.ClearCORS(ctx, "my-service")
+```
+
+`Cors` 未设置 `AllowAll` 时至少需要一个 `AllowOrigins`；`MaxAgeSeconds` 上限为
+604800（7 天）。本地校验失败返回 `ErrInvalidCORS`，不会发出请求。
 
 ## 测试
 
